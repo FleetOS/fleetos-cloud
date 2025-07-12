@@ -1,0 +1,45 @@
+volumes:
+  postgres-data:
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - 3000:3000
+    env_file:
+      .env
+    environment:
+      - PORT
+      - DEV
+      - DATABASE_URL
+      - CACHE_URL
+    volumes:
+      - ./:/app
+    depends_on:
+      - postgres
+      - redis
+
+  redis:
+    image: "redis:alpine"
+    hostname: redis.fleetos
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:14-alpine
+    hostname: postgres.fleetos
+    ports:
+      - "5432:5432"
+    volumes:
+      - ~apps/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_USER=root
+      - POSTGRES_DB=root
