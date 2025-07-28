@@ -1,16 +1,24 @@
 package main
 
 import (
+	"context"
+	"log"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v10"
+	"github.com/eclipse/paho.mqtt.golang"
+	mqttService "github.com/fleetos/fleetos-cloud/internal/mqtt"
+	"github.com/fleetos/fleetos-cloud/internal/repositories"
 	"github.com/fleetos/fleetos-cloud/internal/types"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+
+	_ "github.com/lib/pq"
 )
 
 var config types.Config
@@ -40,16 +48,37 @@ func main() {
 	}
 	defer conn.Close()
 
+	queries := &repositories.Queries{}
+
+	ctx := context.Background()
+
+	mqtt.DEBUG = log.New(os.Stdout, "mqtt-debug=", 0)
+	mqtt.ERROR = log.New(os.Stderr, "mqtt-error=", 0)
+
+	opts := mqtt.
+		NewClientOptions().
+		AddBroker(config.MqttBrokerUrl).
+		SetClientID("fleetos-cloud").
+		SetKeepAlive(time.Minute).
+		SetPingTimeout(5 * time.Second)
+
+	mqttClient := mqtt.NewClient(opts)
+	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
+		logger.Error("error connecting to mqtt broker", "err", token.Error())
+		return
+	}
+
+	mqttService := mqttService.NewMqttService(logger, conn, queries, ctx)
+
+	mqttClient.Subscribe("device_location", 1, mqttService.NewDeviceLocationMessage)
+
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
-	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(200)
-		w.Write([]byte("Hello, world!"))
-	})
+	registerWebsocketHandler(r)
+	registerHttpHandlers(r)
 
 	http.ListenAndServe(":"+config.Port, r)
 }
