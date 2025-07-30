@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v10"
-	"github.com/eclipse/paho.mqtt.golang"
+	mqtt "github.com/eclipse/paho.mqtt.golang"
 	mqttService "github.com/fleetos/fleetos-cloud/internal/mqtt"
 	"github.com/fleetos/fleetos-cloud/internal/repositories"
 	"github.com/fleetos/fleetos-cloud/internal/types"

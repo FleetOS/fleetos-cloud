@@ -48,6 +48,7 @@ services:
 
   emqx:
     image: emqx/emqx-enterprise:5.10.0
+    hostname: emqx.fleetos
     environment:
     - "EMQX_NODE_NAME=emqx@emqx.fleetos"
     - "EMQX_CLUSTER__DISCOVERY_STRATEGY=static"
@@ -57,10 +58,6 @@ services:
       interval: 5s
       timeout: 25s
       retries: 5
-    networks:
-      emqx-bridge:
-        aliases:
-        - emqx.fleetos
     ports:
       - 1883:1883
       - 8083:8083
